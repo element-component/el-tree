@@ -1,0 +1,83 @@
+.tree {
+  overflow: auto;
+  cursor: default;
+}
+
+.tree-node {
+  white-space: nowrap;
+}
+
+.tree-node .expand-icon {
+  display: inline-block;
+  cursor: pointer;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  margin-top: 5px;
+  margin-right: 3px;
+  border: 5px solid transparent;
+
+  border-right-width: 0;
+  border-left-color: #333;
+  border-left-width: 7px;
+}
+
+.tree-node .expand-icon:hover {
+  border-left-color: #999;
+}
+
+.tree-node .expand-icon.expanded {
+  border: 5px solid transparent;
+  border-bottom-width: 0;
+  border-top-color: #333;
+  border-top-width: 7px;
+  margin-top: 7px;
+  margin-right: 0;
+}
+
+.tree-node .expand-icon.expanded:hover {
+  border-top-color: #999;
+}
+
+.tree-node .expand-icon.leafnode {
+  border-color: transparent;
+  cursor: default;
+}
+
+.tree-node .text {
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.tree-node .icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.tree-node .tree-node-content {
+  padding: 2px;
+  cursor: default;
+}
+
+.tree-node .tree-node-content > input {
+  vertical-align: top;
+  margin-top: 5px;
+}
+
+.tree-node.current > .tree-node-content {
+  /*color: red;*/
+}
+
+.tree-node > .tree-node-children {
+  overflow: hidden;
+  background-color: transparent;
+  padding-left: 16px;
+  display: none;
+}
+
+.tree-node.expanded > .tree-node-children {
+  display: block;
+}
