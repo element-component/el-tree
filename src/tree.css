@@ -20,6 +20,9 @@
   border-right-width: 0;
   border-left-color: #333;
   border-left-width: 7px;
+  
+  transform: rotate(0deg);
+  transition: transform 0.3s ease-in-out;
 }
 
 .tree-node .expand-icon:hover {
@@ -27,16 +30,7 @@
 }
 
 .tree-node .expand-icon.expanded {
-  border: 5px solid transparent;
-  border-bottom-width: 0;
-  border-top-color: #333;
-  border-top-width: 7px;
-  margin-top: 7px;
-  margin-right: 0;
-}
-
-.tree-node .expand-icon.expanded:hover {
-  border-top-color: #999;
+  transform: rotate(90deg);
 }
 
 .tree-node .expand-icon.leafnode {

@@ -1,13 +1,9 @@
 <template>
   <div style="height: 400px;">
-    <tree :level-config="lazyLevelConfig" v-ref:tree></tree>
-    <div style="height: 100px;"></div>
     <tree :data="data" :level-config="defaultLevelConfig" :lazy-render="false"></tree>
     <div style="height: 100px;"></div>
-    <tree :data="regions" :level-config="levelConfig"></tree>
-    <div style="height: 100px;"></div>
-    <tree :data="regions" :level-config="levelConfig2"></tree>
-  </panel>
+    <tree :data="regions" :level-config="levelConfig" :load="loadNode" lazy></tree>
+  </div>
 </template>
 
 <style>
@@ -52,39 +48,8 @@
   }];
 
   var count = 1;
+
   var levelConfig = {
-    childrenProperty: 'zones',
-    leafIcon: 'leaf',
-    icon: 'folder',
-    children: {
-      lazy: true,
-      leafIcon: 'leaf',
-      icon: 'folder',
-      load: function(node, callback) {
-        var hasChild = Math.random() > 0.5;
-
-        setTimeout(function() {
-          var data;
-          if (hasChild) {
-            data = [{
-              name: 'zone' + count++
-            }, {
-              name: 'zone' + count++
-            }];
-          } else {
-            data = [];
-          }
-
-          node.children = data;
-          if (callback) {
-            callback();
-          }
-        }, 500);
-      }
-    }
-  };
-
-  var levelConfig2 = {
     childrenProperty: 'zones',
     leafIcon: 'leaf',
     icon: 'folder',
@@ -123,53 +88,38 @@
     recursive: true
   };
 
-  var lazyLevelConfig = {
-    recursive: true,
-    lazy: false,
-    leafIcon: 'leaf',
-    checkedProperty: 'checked',
-    icon: 'folder',
-    load: function(node, callback) {
-      var hasChild = Math.random() > 0.5;
-
-      setTimeout(function() {
-        var data;
-        if (hasChild) {
-          data = [{
-            name: 'zone' + count++,
-            checked: Math.random() > 0.5 ? 1 : 0
-          }, {
-            name: 'zone' + count++,
-            checked: Math.random() > 0.5 ? 1 : 0
-          }];
-        } else {
-          data = [];
-        }
-
-        node.children = data;
-        if (callback) {
-          callback();
-        }
-      }, 100);
-    }
-  };
-
   export default {
     methods: {
       getCheckedNodes() {
         console.log(this.$refs.tree.getCheckedNodes(true));
+      },
+
+      loadNode(node, resolve) {
+        var hasChild = Math.random() > 0.3;
+        if (node.level > 4) return resolve([]);
+        setTimeout(function() {
+          var data;
+          if (hasChild) {
+            data = [{
+              name: 'zone' + count++
+            }, {
+              name: 'zone' + count++
+            }];
+          } else {
+            data = [];
+          }
+
+          resolve(data);
+        }, 500);
       }
     },
 
     data() {
       return {
-        lazyLevelConfig: lazyLevelConfig,
-        children: data,
-        data: data,
-        defaultLevelConfig: defaultLevelConfig,
-        levelConfig: levelConfig,
-        levelConfig2: levelConfig2,
-        regions: regions
+        data,
+        regions,
+        defaultLevelConfig,
+        levelConfig
       };
     }
   };

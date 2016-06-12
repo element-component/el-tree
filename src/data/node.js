@@ -1,29 +1,35 @@
 // import { ROOT_NODE_ID } from './constants';
-import Vue from 'vue';
+let idSeed = 0;
 
 export default class Node {
-  constructor(id, options) {
-    this._id = id;
-    this.icon = null;
+  constructor(options) {
+    idSeed++;
     this.text = null;
     this.checked = false;
+    this.indeterminate = false;
+    this.data = null;
+    this.level = -1;
     this.checkedStatus = null;
     this.expanded = false;
     this.levelConfig = null;
-    this.level = null;
-    this.children = null;
+    this.children = [];
+    this.parent = null;
     this.lazy = false;
     this.loaded = false;
-    this.data = null;
 
     for (let name in options) {
       if (options.hasOwnProperty(name)) {
         this[name] = options[name];
       }
     }
+
+    if (this.parent) {
+      this.level = this.parent.level + 1;
+      this.parent.children.push(this);
+    }
   }
 
-  getLabel() {
+  get label() {
     const data = this.data;
     if (!data) return '';
     const levelConfig = this.levelConfig;
@@ -40,8 +46,80 @@ export default class Node {
     return data[labelProperty];
   }
 
+  get icon() {
+    const data = this.data;
+    if (!data) return '';
+    const levelConfig = this.levelConfig;
+
+    let iconProperty;
+    if (levelConfig) {
+      iconProperty = levelConfig.iconProperty;
+
+      if (!iconProperty) {
+        if (this.hasChild()) {
+          return levelConfig.icon;
+        } else {
+          return levelConfig.leafIcon || levelConfig.icon;
+        }
+      }
+    }
+
+    return data[iconProperty];
+  }
+
+  insertChild(child, index) {
+    if (!child) throw new Error('insertChild error: child is required.');
+
+    if (!child instanceof Node) {
+      throw new Error('insertChild error: child should an instance of Node.');
+    }
+
+    child.parent = this;
+    child.level = this.level + 1;
+
+    if (typeof index === 'undefined') {
+      this.children.push(child);
+    } else {
+      this.children.splice(index, 0, child);
+    }
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+
+    if (index > -1) {
+      child.parent = null;
+      this.children.splice(child, index);
+    }
+  }
+
+  expand(callback) {
+    if (this.needLoadData()) {
+      this.loadIfNeeded((data) => {
+        if (data instanceof Array) {
+          data.forEach((item) => {
+            const node = new Node({
+              data: item
+            });
+            this.insertChild(node);
+          });
+          callback();
+        }
+      });
+    } else {
+      this.expanded = true;
+      if (callback) {
+        callback();
+      }
+    }
+  }
+
+  collapse() {
+    this.expanded = false;
+  }
+
   needLoadData() {
-    return this.lazy === true && !this.loaded && this.loadFn;
+    return this.lazy === true && !this.loaded && this.load;
   }
 
   hasChild() {
@@ -70,61 +148,34 @@ export default class Node {
     return this.checked;
   }
 
-  setChecked1(value) {
-    const data = this.data;
-    if (!data) return;
-    const levelConfig = this.levelConfig;
-    let checkedProperty;
-
-    if (levelConfig) {
-      checkedProperty = levelConfig.checkedProperty;
-
-      if (checkedProperty) {
-        this.checked = value;
-        data[checkedProperty] = value !== false;
-        return;
-      }
-    }
-
-    this.checked = value;
-  }
-
   setChecked(value, deep) {
     // Only work on lazy load data.
     this.loadIfNeeded(() => {
-      const children = this.$children || [];
-      Vue.nextTick(function() {
-        for (let i = 0, j = children.length; i < j; i++) {
-          const child = children[i];
-          child.setChecked(value !== false);
-        }
-      });
+      // const children = this.children || [];
+      // setTimeout(() => {
+      //   for (let i = 0, j = children.length; i < j; i++) {
+      //     const child = children[i];
+      //      child.setChecked(value !== false);
+      //   }
+      // }, 0);
     });
 
-    const input = this.$els.input;
-    if (value === 'half') {
-      input.indeterminate = true;
-      input.checked = false;
-    } else {
-      input.indeterminate = false;
-      input.checked = !!value;
-    }
-
-    this.isChecked = value;
+    this.indeterminate = value === 'half';
+    this.checked = value === true;
 
     if (deep) {
-      var children = this.$children;
+      var children = this.children;
       for (let i = 0, j = children.length; i < j; i++) {
         var child = children[i];
         child.setChecked(value !== false, deep);
       }
     }
 
-    const parent = this.$parent;
+    const parent = this.parent;
 
-    if (parent.level === undefined) return;
+    if (parent.level === -1) return;
 
-    const siblings = parent.$children;
+    const siblings = parent.children;
 
     let all = true;
     let none = true;
@@ -148,28 +199,7 @@ export default class Node {
     }
   }
 
-  getIcon() {
-    const data = this.data;
-    if (!data) return '';
-    const levelConfig = this.levelConfig;
-
-    let iconProperty;
-    if (levelConfig) {
-      iconProperty = levelConfig.iconProperty;
-
-      if (!iconProperty) {
-        if (this.hasChild()) {
-          return levelConfig.icon;
-        } else {
-          return levelConfig.leafIcon || levelConfig.icon;
-        }
-      }
-    }
-
-    return data[iconProperty];
-  }
-
-  getChildren() {
+  getChildren() { // this is data
     const data = this.data;
     if (!data) return null;
     const levelConfig = this.levelConfig;
@@ -184,7 +214,7 @@ export default class Node {
     return data[childrenProperty];
   }
 
-  setChildren(value) {
+  setChildren(value) { // this is data
     const data = this.data;
     if (!data) return;
     const levelConfig = this.levelConfig;
@@ -197,30 +227,25 @@ export default class Node {
   }
 
   loadIfNeeded(callback) {
-    if (this.lazy === true && !this.loaded && this.loadFn) {
+    if (this.lazy === true && !this.loaded && this.load) {
       this.loaded = 'loading';
 
-      const loadFn = this.loadFn;
+      const loadFn = this.load;
+      const resolve = (data) => {
+        this.loaded = true;
+        // TODO
+        this.data.children = data;
+
+        if (callback) {
+          callback.call(this, data);
+        }
+      };
 
       // emit event
-      loadFn(this, () => {
-        this.loaded = true;
-        if (this.lazyRenderChildren) {
-          if (!this.childrenRendered) {
-            this.childrenRendered = true;
-          }
-          if (callback) {
-            callback.call(this);
-          }
-        }
-      });
+      loadFn(this, resolve);
     } else {
-      // emit event
-      if (this.lazyRenderChildren && !this.childrenRendered) {
-        this.childrenRendered = true;
-        if (callback) {
-          callback.call(this);
-        }
+      if (callback) {
+        callback.call(this);
       }
     }
   }

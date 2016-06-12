@@ -6,12 +6,10 @@
 
 <script type="text/ecmascript-6">
   require('./tree.css');
-  import Node from './data/node';
 
   export default {
     created() {
       this.$isTree = true;
-      this.node = new Node();
     },
 
     components: {
@@ -72,13 +70,6 @@
         type: Array
       },
       levelConfig: {},
-      lazy: {
-        type: Boolean,
-        default: false
-      },
-      load: {
-        type: Function
-      },
       lazyRender: {
         type: Boolean,
         default: true

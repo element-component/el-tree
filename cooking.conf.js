@@ -11,7 +11,8 @@ cooking.set({
 
   devServer: {
     port: 8080,
-    publicPath: '/'
+    publicPath: '/',
+    log: false
   },
 
   // production

@@ -4,8 +4,7 @@ let storeIdSeed = 1;
 
 export default class Tree {
   constructor() {
-    this.root = new Node();
     this._isTree = true;
-    this._root = new Node(ROOT_NODE_ID);
+    this._root = new Node({ id: ROOT_NODE_ID });
   }
 }
