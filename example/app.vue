@@ -1,8 +1,8 @@
 <template>
   <div style="height: 400px;">
-    <tree :data="data" :level-config="defaultLevelConfig" :lazy-render="false"></tree>
+    <tree :data="data" :props="defaultProps"></tree>
     <div style="height: 100px;"></div>
-    <tree :data="regions" :level-config="levelConfig" :load="loadNode" lazy></tree>
+    <tree :data="regions" :props="props" :load="loadNode" lazy></tree>
   </div>
 </template>
 
@@ -27,17 +27,14 @@
   var data = [{
     label: 'bb',
     children: [{
-      label: 'b1',
-      checked: true
+      label: 'b1'
     }]
   }, {
     label: 'cc',
     children: [{
-      label: 'cc1',
-      checked: true
+      label: 'cc1'
     }, {
-      label: 'cc2',
-      checked: false
+      label: 'cc2'
     }]
   }];
 
@@ -49,43 +46,20 @@
 
   var count = 1;
 
-  var levelConfig = {
-    childrenProperty: 'zones',
-    leafIcon: 'leaf',
-    icon: 'folder',
-    children: {
-      recursive: true,
-      lazy: true,
-      leafIcon: 'leaf',
-      icon: 'folder',
-      load: function(node, callback) {
-        var hasChild = Math.random() > 0.5;
-        setTimeout(function() {
-          var data;
-          if (hasChild) {
-            data = [{
-              name: 'zone' + count++
-            }, {
-              name: 'zone' + count++
-            }];
-          } else {
-            data = [];
-          }
-
-          node.children = data;
-          if (callback) {
-            callback();
-          }
-        }, 500);
+  var props = {
+    label: 'name',
+    children: 'zones',
+    icon(data, node) {
+      if (node.isLeaf) {
+        return 'leaf';
       }
+      return 'folder';
     }
   };
 
-  var defaultLevelConfig = {
-    childrenProperty: 'children',
-    labelProperty: 'label',
-    checkedProperty: 'checked',
-    recursive: true
+  var defaultProps = {
+    children: 'children',
+    label: 'label'
   };
 
   export default {
@@ -95,8 +69,9 @@
       },
 
       loadNode(node, resolve) {
-        var hasChild = Math.random() > 0.3;
+        var hasChild = Math.random() > 0.5;
         if (node.level > 4) return resolve([]);
+
         setTimeout(function() {
           var data;
           if (hasChild) {
@@ -118,8 +93,8 @@
       return {
         data,
         regions,
-        defaultLevelConfig,
-        levelConfig
+        defaultProps,
+        props
       };
     }
   };

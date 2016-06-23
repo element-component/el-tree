@@ -1,46 +1,49 @@
 <template>
-  <div class="tree-node" :class="{ expanded: childrenRendered && expanded }">
-    <div class="tree-node-content">
-      <span class="expand-icon" 
-        :class="{ leafnode: !expandable, expanded: expandable && expanded }" 
+  <div class="el-tree-node"
+     :class="{ expanded: childrenRendered && expanded }">
+    <div class="el-tree-node__content">
+      <span class="el-tree-node__expand-icon"
+        :class="{ 'is-leaf': !node.isLeaf, expanded: node.isLeaf && expanded }"
         @click="handleExpandIconClick">
       </span>
-      <input type="checkbox" v-model="node.checked" @change="handleCheckChange($event)" v-el:input />
-      <span class="icon {{ node.icon }}" v-if="node.icon"></span><span class="text">
-        {{ node.label }} [{{ '' + expandable }}] ({{ node.level }}) / {{ node.children.length }}
-      </span>
+      <input v-el:input type="checkbox"
+        :true-value="true" :false-value="false" v-model="node.checked"
+        @change="handleCheckChange($event)" />
+      <span class="el-tree-node__icon {{ node.icon }}" v-if="node.icon"></span>
+      <span class="el-tree-node__label">{{ node.label }} {{ node.loading ? '---- loading' : '' }}</span>
     </div>
 
-    <div class="tree-node-children"
+    <div class="el-tree-node__children"
       v-if="childrenRendered"
       v-show="expanded"
       transition="collapse">
-      <d-tree-node v-for="child in data.children" :data="child"></d-tree-node>
+      <el-tree-node v-for="child in node.children" :data="child.data" :node="child"></el-tree-node>
     </div>
   </div>
 </template>
 
 <script type="text/ecmascript-6">
-  // import Vue from 'vue';
-  import Node from './data/node';
+  import CollapseTransition from './transition';
 
   export default {
-    name: 'd-tree-node',
+    name: 'el-tree-node',
 
     props: {
       data: {
         type: Object,
         required: true
+      },
+      node: {
+        default() {
+          return {};
+        }
       }
     },
 
     data() {
       return {
         $tree: null,
-        node: {},
-        loaded: false,
         expanded: false,
-        levelConfig: null,
         childrenRendered: false
       };
     },
@@ -48,18 +51,6 @@
     watch: {
       'node.indeterminate'(newVal) {
         this.$els.input.indeterminate = newVal;
-      }
-    },
-
-    computed: {
-      expandable() {
-        const tree = this.$tree;
-        var children = this.data.children;
-
-        if (!tree.lazy || (tree.lazy === true && this.node.loaded === true)) {
-          return !!(children && children.length > 0);
-        }
-        return true;
       }
     },
 
@@ -82,7 +73,7 @@
       }
     },
 
-    created() {
+    beforeCompile() {
       var parent = this.$parent;
 
       if (parent.$isTree) {
@@ -93,24 +84,13 @@
 
       const tree = this.$tree;
 
-      const levelConfig = tree.levelConfig;
-      this.levelConfig = levelConfig;
-
       if (!tree) {
         console.warn('Can not find node\'s tree.');
       }
-
-      this.node = new Node({
-        lazy: tree.lazy,
-        load: tree.load,
-        data: this.data,
-        parent: parent.node,
-        levelConfig
-      });
     },
 
     transitions: {
-      collapse: require('./collapse-transition').default
+      collapse: CollapseTransition
     }
   };
 </script>

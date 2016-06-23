@@ -1,21 +1,57 @@
 <template>
-  <div class="tree">
-    <tree-node v-for="child in data" :data="child"></tree-node>
+  <div class="el-tree">
+    <el-tree-node v-for="child in tree.root.children" :data="child.data" :node="child"></el-tree-node>
   </div>
 </template>
 
 <script type="text/ecmascript-6">
   require('./tree.css');
-  import Node from './data/node';
+  import Tree from './data/tree';
 
   export default {
+    name: 'el-tree',
+
+    props: {
+      data: {
+        type: Array
+      },
+      props: {
+        default() {
+          return {
+            children: 'children',
+            label: 'label',
+            icon: 'icon'
+          };
+        }
+      },
+      lazy: {
+        type: Boolean,
+        default: false
+      },
+      load: {
+        type: Function
+      }
+    },
+
     created() {
       this.$isTree = true;
-      this.node = new Node();
+
+      this.tree = new Tree({
+        data: this.data,
+        lazy: this.lazy,
+        props: this.props,
+        load: this.load
+      });
+    },
+
+    data() {
+      return {
+        tree: {}
+      };
     },
 
     components: {
-      TreeNode: require('./tree-node.vue')
+      ElTreeNode: require('./tree-node.vue')
     },
 
     computed: {
@@ -30,58 +66,8 @@
     },
 
     methods: {
-      getCheckedNodes(leafNodeOnly) {
-        var checkedNodes = [];
-        var walk = function(node) {
-          var children = node.$children;
-          children.forEach(function(child) {
-            if (leafNodeOnly) {
-              if (child.isChecked && !child.hasChild) {
-                checkedNodes.push(child.data);
-              }
-            } else {
-              if (child.isChecked) {
-                checkedNodes.push(child.data);
-              }
-            }
-
-            walk(child);
-          });
-        };
-
-        walk(this);
-
-        return checkedNodes;
-      }
-    },
-
-    ready() {
-      if (this.levelConfig && this.levelConfig.lazy !== undefined) {
-        var loadFn = this.levelConfig.load;
-        if (!loadFn) return;
-        loadFn(this, (callback) => {
-          if (callback) {
-            callback.call(this);
-          }
-        });
-      }
-    },
-
-    props: {
-      data: {
-        type: Array
-      },
-      levelConfig: {},
-      lazy: {
-        type: Boolean,
-        default: false
-      },
-      load: {
-        type: Function
-      },
-      lazyRender: {
-        type: Boolean,
-        default: true
+      getCheckedNodes(leafOnly) {
+        return this.tree.getCheckedNodes(leafOnly);
       }
     }
   };

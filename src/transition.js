@@ -1,4 +1,4 @@
-require('./collapse-transition.css');
+require('./transition.css');
 
 export default {
   beforeEnter(el) {

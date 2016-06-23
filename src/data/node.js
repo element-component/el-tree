@@ -1,21 +1,55 @@
-// import { ROOT_NODE_ID } from './constants';
 let idSeed = 0;
+
+const reInitChecked = function(node) {
+  const siblings = node.children;
+
+  let all = true;
+  let none = true;
+
+  for (let i = 0, j = siblings.length; i < j; i++) {
+    const sibling = siblings[i];
+    if (sibling.checked !== true) {
+      all = false;
+    }
+    if (sibling.checked !== false) {
+      none = false;
+    }
+  }
+
+  if (all) {
+    node.setChecked(true);
+  } else if (!all && !none) {
+    node.setChecked('half');
+  } else if (none) {
+    node.setChecked(false);
+  }
+};
+
+const getPropertyFromData = function(node, prop) {
+  const props = node.props;
+  const data = node.data;
+  const config = props[prop];
+
+  if (typeof config === 'function') {
+    return config(data, node);
+  } else if (typeof config === 'string') {
+    return data[config];
+  } else if (typeof config === 'undefined') {
+    return '';
+  }
+};
 
 export default class Node {
   constructor(options) {
-    idSeed++;
+    this.id = idSeed++;
     this.text = null;
     this.checked = false;
     this.indeterminate = false;
     this.data = null;
-    this.level = -1;
-    this.checkedStatus = null;
     this.expanded = false;
-    this.levelConfig = null;
-    this.children = [];
+    this.props = null;
     this.parent = null;
     this.lazy = false;
-    this.loaded = false;
 
     for (let name in options) {
       if (options.hasOwnProperty(name)) {
@@ -23,48 +57,43 @@ export default class Node {
       }
     }
 
+    // internal
+    this.level = -1;
+    this.loaded = false;
+    this.children = [];
+    this.loading = false;
+
     if (this.parent) {
       this.level = this.parent.level + 1;
-      this.parent.children.push(this);
+    }
+
+    if (this.lazy !== true && this.data) {
+      let children;
+      if (this.level === -1 && this.data instanceof Array) {
+        children = this.data;
+      } else {
+        children = getPropertyFromData(this, 'children') || [];
+      }
+
+      for (let i = 0, j = children.length; i < j; i++) {
+        const child = children[i];
+        this.insertChild(new Node({
+          data: child,
+          parent: this,
+          lazy: this.lazy,
+          load: this.load,
+          props: this.props
+        }));
+      }
     }
   }
 
   get label() {
-    const data = this.data;
-    if (!data) return '';
-    const levelConfig = this.levelConfig;
-
-    let labelProperty;
-    if (levelConfig) {
-      labelProperty = levelConfig.labelProperty;
-    }
-
-    if (!labelProperty) {
-      return data.label || data.name || data.text;
-    }
-
-    return data[labelProperty];
+    return getPropertyFromData(this, 'label');
   }
 
   get icon() {
-    const data = this.data;
-    if (!data) return '';
-    const levelConfig = this.levelConfig;
-
-    let iconProperty;
-    if (levelConfig) {
-      iconProperty = levelConfig.iconProperty;
-
-      if (!iconProperty) {
-        if (this.hasChild()) {
-          return levelConfig.icon;
-        } else {
-          return levelConfig.leafIcon || levelConfig.icon;
-        }
-      }
-    }
-
-    return data[iconProperty];
+    return getPropertyFromData(this, 'icon');
   }
 
   insertChild(child, index) {
@@ -94,15 +123,9 @@ export default class Node {
   }
 
   expand(callback) {
-    if (this.needLoadData()) {
-      this.loadIfNeeded((data) => {
+    if (this.shouldLoadData()) {
+      this.loadData((data) => {
         if (data instanceof Array) {
-          data.forEach((item) => {
-            const node = new Node({
-              data: item
-            });
-            this.insertChild(node);
-          });
           callback();
         }
       });
@@ -114,12 +137,29 @@ export default class Node {
     }
   }
 
+  doCreateChildren(array, defaultProps = {}) {
+    array.forEach((item) => {
+      const node = new Node({
+        data: item,
+        lazy: this.lazy,
+        load: this.load,
+        props: this.props,
+        ...defaultProps
+      });
+      this.insertChild(node);
+    });
+  }
+
   collapse() {
     this.expanded = false;
   }
 
-  needLoadData() {
-    return this.lazy === true && !this.loaded && this.load;
+  shouldLoadData() {
+    return this.lazy === true && this.load && !this.loaded;
+  }
+
+  get isLeaf() {
+    return this.hasChild();
   }
 
   hasChild() {
@@ -130,118 +170,70 @@ export default class Node {
     return true;
   }
 
-  isChecked() {
-    if (this.checked !== undefined) return this.checked;
-
-    const data = this.data;
-    if (!data) return false;
-    const levelConfig = this.levelConfig;
-    let checkedProperty;
-
-    if (levelConfig) {
-      checkedProperty = levelConfig.checkedProperty;
-      if (checkedProperty) {
-        this.checked = !!data[checkedProperty];
-      }
-    }
-
-    return this.checked;
-  }
-
   setChecked(value, deep) {
-    // Only work on lazy load data.
-    this.loadIfNeeded(() => {
-      // const children = this.children || [];
-      // setTimeout(() => {
-      //   for (let i = 0, j = children.length; i < j; i++) {
-      //     const child = children[i];
-      //      child.setChecked(value !== false);
-      //   }
-      // }, 0);
-    });
-
     this.indeterminate = value === 'half';
     this.checked = value === true;
 
-    if (deep) {
-      var children = this.children;
-      for (let i = 0, j = children.length; i < j; i++) {
-        var child = children[i];
-        child.setChecked(value !== false, deep);
+    const handleDeep = () => {
+      if (deep) {
+        const children = this.children;
+        for (let i = 0, j = children.length; i < j; i++) {
+          const child = children[i];
+          child.setChecked(value !== false, deep);
+        }
       }
+    };
+
+    if (this.shouldLoadData()) {
+      // Only work on lazy load data.
+      this.loadData(() => {
+        handleDeep();
+      }, {
+        checked: value !== false
+      });
+    } else {
+      handleDeep();
     }
 
     const parent = this.parent;
-
     if (parent.level === -1) return;
 
-    const siblings = parent.children;
-
-    let all = true;
-    let none = true;
-
-    for (let i = 0, j = siblings.length; i < j; i++) {
-      var sibling = siblings[i];
-      if (sibling.checked !== true) {
-        all = false;
-      }
-      if (sibling.checked !== false) {
-        none = false;
-      }
-    }
-
-    if (all) {
-      parent.setChecked(true);
-    } else if (!all && !none) {
-      parent.setChecked('half');
-    } else if (none) {
-      parent.setChecked(false);
-    }
+    reInitChecked(parent);
   }
 
   getChildren() { // this is data
     const data = this.data;
     if (!data) return null;
-    const levelConfig = this.levelConfig;
-    let childrenProperty = 'children';
-    if (levelConfig) {
-      childrenProperty = levelConfig.childrenProperty || 'children';
-    }
-    if (data[childrenProperty] === undefined) {
-      data[childrenProperty] = null;
+
+    const props = this.props;
+    let children = 'children';
+    if (props) {
+      children = props.children || 'children';
     }
 
-    return data[childrenProperty];
+    if (data[children] === undefined) {
+      data[children] = null;
+    }
+
+    return data[children];
   }
 
-  setChildren(value) { // this is data
-    const data = this.data;
-    if (!data) return;
-    const levelConfig = this.levelConfig;
-    let childrenProperty = 'children';
-    if (levelConfig) {
-      childrenProperty = levelConfig.childrenProperty || 'children';
-    }
-
-    this.children = data[childrenProperty] = value;
-  }
-
-  loadIfNeeded(callback) {
-    if (this.lazy === true && !this.loaded && this.load) {
-      this.loaded = 'loading';
+  loadData(callback, defaultProps = {}) {
+    if (this.lazy === true && this.load && !this.loaded) {
+      this.loading = true;
 
       const loadFn = this.load;
-      const resolve = (data) => {
+      const resolve = (children) => {
         this.loaded = true;
-        // TODO
-        this.data.children = data;
+        this.loading = false;
+
+        this.doCreateChildren(children, defaultProps);
 
         if (callback) {
-          callback.call(this, data);
+          callback.call(this, children);
         }
       };
 
-      // emit event
       loadFn(this, resolve);
     } else {
       if (callback) {

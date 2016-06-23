@@ -24,7 +24,25 @@ cooking.set({
   assetsPath: 'static',
   urlLoaderLimit: 10000,
   extractCSS: '[name].[contenthash:7].css',
-  extends: ['vue', 'lint', 'saladcss']
+  extends: {
+    'vue': {},
+    'lint': {},
+    'saladcss': {
+      features: {
+        'bem': {
+          'shortcuts': {
+            'component': 'b',
+            'modifier': 'm',
+            'descendent': 'e'
+          },
+          'separators': {
+            'descendent': '__',
+            'modifier': '--'
+          }
+        }
+      }
+    }
+  }
 });
 
 cooking.add('resolve.alias', {
